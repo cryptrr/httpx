@@ -1,12 +1,2 @@
-*.pyc
-.coverage
-.pytest_cache/
-.mypy_cache/
-__pycache__/
-htmlcov/
-site/
-*.egg-info/
-venv*/
-.python-version
-build/
-dist/
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*

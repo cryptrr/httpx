@@ -13,6 +13,8 @@ import rich.markup
 import rich.progress
 import rich.syntax
 import rich.table
+import http.cookiejar
+
 
 from ._client import Client
 from ._exceptions import RequestError
@@ -64,6 +66,9 @@ def print_help() -> None:
     )
     table.add_row(
         "--cookies [cyan]<NAME VALUE> ...", "Cookies to include in the request."
+    )
+    table.add_row(
+        "--cookie-file [cyan]<FILEPATH> ...", "Cookies file that acts as a cookie jar."
     )
     table.add_row(
         "--auth [cyan]<USER PASS>",
@@ -377,6 +382,12 @@ def handle_help(
     help="Cookies to include in the request.",
 )
 @click.option(
+    "--cookie-file",
+    "cookie_file",
+    type=str,
+    help="Cookies to include in the request.",
+)
+@click.option(
     "--auth",
     "auth",
     type=(str, str),
@@ -459,6 +470,7 @@ def main(
     json: str,
     headers: list[tuple[str, str]],
     cookies: list[tuple[str, str]],
+    cookie_file: str,
     auth: tuple[str, str] | None,
     proxy: str,
     timeout: float,
@@ -476,6 +488,24 @@ def main(
         method = "POST" if content or data or files or json else "GET"
 
     try:
+        
+        cookies_result = {}
+
+        cj = None
+
+        if cookie_file:
+            cj = http.cookiejar.MozillaCookieJar(cookie_file)
+            cj.load(ignore_discard=True, ignore_expires=True)
+            
+            cookies_result = {
+                cookie.name: cookie.value
+                for cookie in cj
+                if cookie.value is not None
+            }
+            
+        elif cookies:
+            cookies_result = dict(cookies)
+        
         with Client(proxy=proxy, timeout=timeout, http2=http2, verify=verify) as client:
             with client.stream(
                 method,
@@ -486,11 +516,15 @@ def main(
                 files=files,  # type: ignore
                 json=json,
                 headers=headers,
-                cookies=dict(cookies),
+                cookies=cookies_result,
                 auth=auth,
                 follow_redirects=follow_redirects,
                 extensions={"trace": functools.partial(trace, verbose=verbose)},
             ) as response:
+                if cj is not None:
+                    for cookie in client.cookies.jar:
+                        cj.set_cookie(cookie=cookie)
+                        
                 if download is not None:
                     download_response(response, download)
                 else:
