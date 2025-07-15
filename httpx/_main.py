@@ -489,22 +489,11 @@ def main(
 
     try:
         
-        cookies_result = {}
-
         cj = None
-
         if cookie_file:
             cj = http.cookiejar.MozillaCookieJar(cookie_file)
             cj.load(ignore_discard=True, ignore_expires=True)
             
-            cookies_result = {
-                cookie.name: cookie.value
-                for cookie in cj
-                if cookie.value is not None
-            }
-            
-        elif cookies:
-            cookies_result = dict(cookies)
         
         with Client(proxy=proxy, timeout=timeout, http2=http2, verify=verify) as client:
             with client.stream(
@@ -516,13 +505,14 @@ def main(
                 files=files,  # type: ignore
                 json=json,
                 headers=headers,
-                cookies=cookies_result,
+                cookies=cj if cookie_file is not None else dict(cookies),
                 auth=auth,
                 follow_redirects=follow_redirects,
                 extensions={"trace": functools.partial(trace, verbose=verbose)},
             ) as response:
                 if cj is not None:
                     for cookie in client.cookies.jar:
+                        print(cookie)
                         cj.set_cookie(cookie=cookie)
                         
                 if download is not None:
