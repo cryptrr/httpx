@@ -512,8 +512,8 @@ def main(
             ) as response:
                 if cj is not None:
                     for cookie in client.cookies.jar:
-                        print(cookie)
                         cj.set_cookie(cookie=cookie)
+                    cj.save()
                         
                 if download is not None:
                     download_response(response, download)
